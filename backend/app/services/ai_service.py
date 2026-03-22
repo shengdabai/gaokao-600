@@ -14,7 +14,7 @@ def _get_client() -> genai.Client:
     return genai.Client(api_key=api_key)
 
 
-MODEL = "gemini-2.5-flash-preview-05-20"
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
 
 def _generate(contents: list, temperature: float = 0.7) -> str:
