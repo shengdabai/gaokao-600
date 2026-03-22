@@ -1,0 +1,39 @@
+from datetime import date
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.models.models import Task
+from app.schemas.schemas import TaskOut
+
+router = APIRouter(prefix="/api/tasks", tags=["task"])
+
+USER_ID = 1
+
+
+@router.get("/daily", response_model=List[TaskOut])
+def get_daily_tasks(
+    date_str: Optional[str] = Query(alias="date", default=None),
+    db: Session = Depends(get_db),
+):
+    target_date = date.fromisoformat(date_str) if date_str else date.today()
+    tasks = (
+        db.query(Task)
+        .filter(Task.user_id == USER_ID, Task.scheduled_date == target_date)
+        .order_by(Task.id.asc())
+        .all()
+    )
+    return tasks
+
+
+@router.put("/{task_id}/complete", response_model=TaskOut)
+def complete_task(task_id: int, db: Session = Depends(get_db)):
+    task = db.query(Task).filter(Task.id == task_id, Task.user_id == USER_ID).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    task.completed = True
+    db.commit()
+    db.refresh(task)
+    return task
