@@ -20,11 +20,14 @@ class ApiError extends Error {
   }
 }
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+
 async function request<T>(
   url: string,
   options?: RequestInit
 ): Promise<T> {
-  const res = await fetch(url, {
+  const fullUrl = url.startsWith("/api") ? `${API_BASE}${url}` : url;
+  const res = await fetch(fullUrl, {
     headers: {
       "Content-Type": "application/json",
       ...options?.headers,
