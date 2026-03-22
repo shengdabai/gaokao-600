@@ -144,6 +144,16 @@ export interface WeeklyReview {
   ai_summary?: string;
 }
 
+// AI Recognition
+export interface RecognizedQuestion {
+  subject: string;
+  question_text: string;
+  user_answer: string;
+  correct_answer: string;
+  error_reason: string;
+  knowledge_point: string;
+}
+
 // Subject config (for UI)
 export interface SubjectConfig {
   id: string;

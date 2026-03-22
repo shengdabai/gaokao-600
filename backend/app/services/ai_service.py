@@ -138,3 +138,139 @@ class AIService:
         )
         prompt = f"{system_prompt}\n\n请为以下内容生成学习笔记：\n\n{query}"
         return await asyncio.to_thread(_generate, [prompt], 0.5)
+
+    @staticmethod
+    async def recognize_question(base64_image: str, subject: str | None = None) -> dict:
+        subject_hint = ""
+        if subject:
+            subject_cn = {
+                "chinese": "语文",
+                "math": "数学",
+                "english": "英语",
+                "physics": "物理",
+                "chemistry": "化学",
+                "politics": "政治",
+            }.get(subject, subject)
+            subject_hint = f"该题目的学科是：{subject_cn}。"
+
+        system_prompt = (
+            "你是一位经验丰富的高中老师，请分析图片中的错题。"
+            f"{subject_hint}\n"
+            "请识别并提取以下信息，以纯JSON格式返回（不要包含markdown代码块标记）：\n"
+            "{\n"
+            '  "subject": "学科名称（如：数学、语文、英语、物理、化学、政治）",\n'
+            '  "question_text": "完整的题目文本",\n'
+            '  "user_answer": "学生的答案（如果图片中可见）",\n'
+            '  "correct_answer": "正确答案",\n'
+            '  "error_reason": "错误原因分析",\n'
+            '  "knowledge_point": "涉及的知识点"\n'
+            "}\n"
+            "请确保返回有效的JSON格式。"
+        )
+
+        mime_type = "image/png"
+        if base64_image.startswith("/9j/"):
+            mime_type = "image/jpeg"
+
+        image_bytes = base64.b64decode(base64_image)
+
+        def _call() -> str:
+            client = _get_client()
+            response = client.models.generate_content(
+                model=MODEL,
+                contents=[
+                    types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+                    system_prompt,
+                ],
+                config=types.GenerateContentConfig(temperature=0.3),
+            )
+            return response.text
+
+        raw = await asyncio.to_thread(_call)
+
+        # Strip markdown code block markers if present
+        text = raw.strip()
+        if text.startswith("```"):
+            # Remove opening ```json or ```
+            first_newline = text.index("\n")
+            text = text[first_newline + 1 :]
+        if text.endswith("```"):
+            text = text[: -3]
+        text = text.strip()
+
+        return json.loads(text)
+
+    @staticmethod
+    async def generate_similar(
+        question_text: str, subject: str, knowledge_point: str, error_reason: str
+    ) -> str:
+        subject_cn = {
+            "chinese": "语文",
+            "math": "数学",
+            "english": "英语",
+            "physics": "物理",
+            "chemistry": "化学",
+            "politics": "政治",
+        }.get(subject, subject)
+
+        system_prompt = (
+            f"你是一位经验丰富的高中{subject_cn}老师。"
+            "学生在以下题目中犯了错误，请根据相同的知识点和推理模式，"
+            "生成2-3道类似的练习题，帮助学生举一反三。\n\n"
+            "要求：\n"
+            "1. 每道题都要围绕相同的知识点\n"
+            "2. 难度递进，从基础到提高\n"
+            "3. 每道题都要给出详细的解题过程和答案\n"
+            "4. 使用Markdown格式，清晰易读\n"
+        )
+        prompt = (
+            f"{system_prompt}\n\n"
+            f"**原题：**\n{question_text}\n\n"
+            f"**知识点：**{knowledge_point}\n\n"
+            f"**错误原因：**{error_reason}\n\n"
+            f"请生成类似练习题："
+        )
+        return await asyncio.to_thread(_generate, [prompt])
+
+    @staticmethod
+    async def check_answer(question: str, subject: str, user_answer: str) -> str:
+        subject_cn = {
+            "chinese": "语文",
+            "math": "数学",
+            "english": "英语",
+            "physics": "物理",
+            "chemistry": "化学",
+            "politics": "政治",
+        }.get(subject, subject)
+
+        system_prompt = (
+            f"你是一位经验丰富的高中{subject_cn}老师。"
+            "请判断学生的答案是否正确，并给出详细的反馈。\n"
+            "包括：\n"
+            "1. 判断对错\n"
+            "2. 如果错误，指出错在哪里\n"
+            "3. 给出正确的解题思路\n"
+            "4. 鼓励性的评语\n"
+        )
+        prompt = (
+            f"{system_prompt}\n\n"
+            f"**题目：**\n{question}\n\n"
+            f"**学生答案：**\n{user_answer}\n\n"
+            f"请评判并给出反馈："
+        )
+        return await asyncio.to_thread(_generate, [prompt])
+
+    @staticmethod
+    async def english_review(text: str) -> str:
+        system_prompt = (
+            "你是一位经验丰富的高中英语老师，擅长高考英语写作指导。"
+            "请对学生提交的英语作文或文段进行详细点评，包括以下维度：\n"
+            "1. **Grammar and Spelling**：语法和拼写错误，逐一列出并给出修正\n"
+            "2. **Vocabulary Usage**：词汇使用是否准确、丰富，有无高级词汇替换建议\n"
+            "3. **Sentence Structure**：句式是否多样，是否有长短句结合\n"
+            "4. **Coherence and Organization**：文章连贯性和组织结构是否合理\n"
+            "5. **Suggestions for Improvement**：具体的改进建议和优化方案\n\n"
+            "请用中文点评，但对英语错误的修正用英文标注。语气要鼓励性的，先肯定优点，再指出不足。"
+        )
+        prompt = f"{system_prompt}\n\n请点评以下英语作文/文段：\n\n{text}"
+        return await asyncio.to_thread(_generate, [prompt])

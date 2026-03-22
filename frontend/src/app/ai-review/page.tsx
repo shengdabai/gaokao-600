@@ -13,21 +13,24 @@ import {
   Upload,
   Image as ImageIcon,
   X,
+  BookOpen,
 } from "lucide-react";
 import {
   chineseReview,
   politicsReview,
   analyzeImage,
   searchNotes,
+  reviewEnglish,
 } from "@/lib/api";
 import { SUBJECTS } from "@/lib/subjects";
 import SubjectBadge from "@/components/SubjectBadge";
 
-type Tab = "essay" | "politics" | "photo" | "notes";
+type Tab = "essay" | "politics" | "english" | "photo" | "notes";
 
-const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
+const tabs: { id: Tab; label: string; icon: React.ElementType; iconText?: string }[] = [
   { id: "essay", label: "语文批改", icon: PenLine },
   { id: "politics", label: "政治批改", icon: Scale },
+  { id: "english", label: "英语批改", icon: BookOpen },
   { id: "photo", label: "拍题讲解", icon: Camera },
   { id: "notes", label: "笔记搜索", icon: Search },
 ];
@@ -72,6 +75,7 @@ export default function AIReviewPage() {
         >
           {activeTab === "essay" && <EssayTab />}
           {activeTab === "politics" && <PoliticsTab />}
+          {activeTab === "english" && <EnglishTab />}
           {activeTab === "photo" && <PhotoTab />}
           {activeTab === "notes" && <NotesTab />}
         </motion.div>
@@ -209,6 +213,95 @@ function PoliticsTab() {
           <button
             onClick={handleSubmit}
             disabled={loading || !question.trim() || !answer.trim()}
+            className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 transition"
+          >
+            {loading ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Send size={18} />
+            )}
+            {loading ? "批改中..." : "开始批改"}
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-rose-50 text-rose-700 px-4 py-3 rounded-xl text-sm">
+          {error}
+        </div>
+      )}
+
+      {feedback && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card rounded-3xl p-5 lg:p-8 space-y-5"
+        >
+          <h2 className="text-lg font-semibold text-slate-800">批改结果</h2>
+          <div className="bg-slate-50 rounded-2xl p-4">
+            <div className="markdown-body text-sm">
+              <ReactMarkdown>{feedback}</ReactMarkdown>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
+function EnglishTab() {
+  const [text, setText] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const wordCount = text
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length > 0).length;
+
+  async function handleSubmit() {
+    if (!text.trim()) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await reviewEnglish(text);
+      setFeedback(res.feedback);
+    } catch (err: any) {
+      setError(err.message || "批改失败，请重试");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="glass-card rounded-3xl p-5 lg:p-8">
+        <h2 className="text-lg font-semibold text-slate-800 mb-3">
+          英语作文批改
+        </h2>
+        <p className="text-sm text-slate-500 mb-3">
+          粘贴英语作文或书面表达，AI帮你批改语法、用词和结构
+        </p>
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Paste or type your English essay here..."
+          rows={10}
+          className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none text-sm resize-none leading-relaxed"
+        />
+        <div className="flex items-center justify-between mt-4">
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-slate-400">
+              {text.length} 字符
+            </span>
+            <span className="text-xs text-slate-400">
+              {wordCount} 词
+            </span>
+          </div>
+          <button
+            onClick={handleSubmit}
+            disabled={loading || !text.trim()}
             className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 transition"
           >
             {loading ? (

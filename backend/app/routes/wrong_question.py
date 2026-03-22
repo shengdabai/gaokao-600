@@ -76,3 +76,17 @@ def update_wrong_question(
     db.commit()
     db.refresh(wq)
     return wq
+
+
+@router.delete("/{wq_id}")
+def delete_wrong_question(wq_id: int, db: Session = Depends(get_db)):
+    wq = (
+        db.query(WrongQuestion)
+        .filter(WrongQuestion.id == wq_id, WrongQuestion.user_id == USER_ID)
+        .first()
+    )
+    if not wq:
+        raise HTTPException(status_code=404, detail="错题不存在")
+    db.delete(wq)
+    db.commit()
+    return {"detail": "删除成功"}

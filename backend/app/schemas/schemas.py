@@ -173,6 +173,37 @@ class AIReviewResponse(BaseModel):
     feedback: str
 
 
+class RecognizeQuestionRequest(BaseModel):
+    base64_image: str
+    subject: Optional[str] = None
+
+
+class RecognizeQuestionResponse(BaseModel):
+    subject: str
+    question_text: str
+    user_answer: str
+    correct_answer: str
+    error_reason: str
+    knowledge_point: str
+
+
+class SimilarQuestionsRequest(BaseModel):
+    question_text: str
+    subject: str
+    knowledge_point: str
+    error_reason: str
+
+
+class CheckAnswerRequest(BaseModel):
+    question: str
+    subject: str
+    user_answer: str
+
+
+class EnglishReviewRequest(BaseModel):
+    text: str
+
+
 # ── Weekly Review ────────────────────────────────────────────────────
 class WeeklyReviewOut(BaseModel):
     week_start: date

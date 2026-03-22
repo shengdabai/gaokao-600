@@ -10,6 +10,7 @@ import type {
   AIFeedback,
   WeeklyReview,
   UserProfile,
+  RecognizedQuestion,
 } from "@/types";
 
 class ApiError extends Error {
@@ -36,11 +37,13 @@ async function request<T>(
   });
 
   if (!res.ok) {
-    const text = await res.text().catch(() => "Unknown error");
-    throw new ApiError(text, res.status);
+    const errText = await res.text().catch(() => "Unknown error");
+    throw new ApiError(errText, res.status);
   }
 
-  return res.json();
+  const body = await res.text();
+  if (!body) return undefined as T;
+  return JSON.parse(body);
 }
 
 // User Profile
@@ -170,4 +173,55 @@ export async function searchNotes(
 // Weekly Review
 export async function getWeeklyReview(): Promise<WeeklyReview> {
   return request<WeeklyReview>("/api/weekly-review");
+}
+
+// New AI endpoints
+export async function recognizeQuestion(base64Image: string, subject?: string) {
+  return request<RecognizedQuestion>("/api/ai/recognize-question", {
+    method: "POST",
+    body: JSON.stringify({ base64_image: base64Image, subject }),
+  });
+}
+
+export async function generateSimilarQuestions(data: {
+  question_text: string;
+  subject: string;
+  knowledge_point: string;
+  error_reason: string;
+}) {
+  return request<AIFeedback>("/api/ai/similar-questions", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function checkAnswer(data: {
+  question: string;
+  subject: string;
+  user_answer: string;
+}) {
+  return request<AIFeedback>("/api/ai/check-answer", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function reviewEnglish(text: string) {
+  return request<AIFeedback>("/api/ai/english-review", {
+    method: "POST",
+    body: JSON.stringify({ text }),
+  });
+}
+
+// Delete endpoints
+export async function deleteExam(id: string) {
+  return request<void>(`/api/exams/${id}`, { method: "DELETE" });
+}
+
+export async function deleteWrongQuestion(id: string) {
+  return request<void>(`/api/wrong-questions/${id}`, { method: "DELETE" });
+}
+
+export async function deleteTask(id: string) {
+  return request<void>(`/api/tasks/${id}`, { method: "DELETE" });
 }

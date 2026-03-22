@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -54,6 +54,16 @@ def list_exams(db: Session = Depends(get_db)):
         .order_by(Exam.exam_date.desc())
         .all()
     )
+
+
+@router.delete("/exams/{exam_id}")
+def delete_exam(exam_id: int, db: Session = Depends(get_db)):
+    exam = db.query(Exam).filter(Exam.id == exam_id, Exam.user_id == USER_ID).first()
+    if not exam:
+        raise HTTPException(status_code=404, detail="考试记录不存在")
+    db.delete(exam)
+    db.commit()
+    return {"detail": "删除成功"}
 
 
 @router.get("/diagnosis")

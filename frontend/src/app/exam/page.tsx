@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Send, Calendar, FileText, TrendingDown, Loader2 } from "lucide-react";
-import { createExam, getExams, getDiagnosis } from "@/lib/api";
+import { Send, Calendar, FileText, TrendingDown, Loader2, Trash2 } from "lucide-react";
+import { createExam, getExams, getDiagnosis, deleteExam } from "@/lib/api";
 import { SUBJECTS } from "@/lib/subjects";
 import SubjectBadge from "@/components/SubjectBadge";
 import type { Exam, ExamCreate, Diagnosis } from "@/types";
@@ -104,6 +104,16 @@ export default function ExamPage() {
       setError(err.message || "提交失败，请重试");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleDeleteExam(id: string) {
+    if (!window.confirm("确定要删除这条考试记录吗？")) return;
+    try {
+      await deleteExam(id);
+      setExams((prev) => prev.filter((e) => e.id !== id));
+    } catch {
+      // Ignore
     }
   }
 
@@ -303,11 +313,20 @@ export default function ExamPage() {
                     </h3>
                     <p className="text-xs text-slate-400">{exam.exam_date}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-slate-900">
-                      {exam.total_score}
-                    </p>
-                    <p className="text-xs text-slate-400">总分</p>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-slate-900">
+                        {exam.total_score}
+                      </p>
+                      <p className="text-xs text-slate-400">总分</p>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteExam(exam.id)}
+                      className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 text-slate-400 hover:bg-rose-100 hover:text-rose-600 transition"
+                      title="删除"
+                    >
+                      <Trash2 size={15} />
+                    </button>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">

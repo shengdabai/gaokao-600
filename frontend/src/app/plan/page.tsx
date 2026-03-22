@@ -10,8 +10,9 @@ import {
   ChevronUp,
   Clock,
   Target,
+  Trash2,
 } from "lucide-react";
-import { getWeeklyPlan, generatePlan, getDailyTasks, completeTask } from "@/lib/api";
+import { getWeeklyPlan, generatePlan, getDailyTasks, completeTask, deleteTask } from "@/lib/api";
 import { getSubjectName, SUBJECTS } from "@/lib/subjects";
 import TaskCard from "@/components/TaskCard";
 import SubjectBadge from "@/components/SubjectBadge";
@@ -113,6 +114,16 @@ export default function PlanPage() {
       );
     } catch {
       // Revert on error
+    }
+  }
+
+  async function handleDeleteTask(taskId: string) {
+    if (!window.confirm("确定要删除这个任务吗？")) return;
+    try {
+      await deleteTask(taskId);
+      setTodayTasks((prev) => prev.filter((t) => t.id !== taskId));
+    } catch {
+      // Ignore
     }
   }
 
@@ -256,15 +267,25 @@ export default function PlanPage() {
                 </div>
               ) : (
                 todayTasks.map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    id={task.id}
-                    subject={task.subject}
-                    description={task.title + (task.description ? ` - ${task.description}` : "")}
-                    durationMinutes={task.estimated_minutes}
-                    completed={task.completed}
-                    onToggle={handleToggleTask}
-                  />
+                  <div key={task.id} className="flex items-start gap-2">
+                    <div className="flex-1">
+                      <TaskCard
+                        id={task.id}
+                        subject={task.subject}
+                        description={task.title + (task.description ? ` - ${task.description}` : "")}
+                        durationMinutes={task.estimated_minutes}
+                        completed={task.completed}
+                        onToggle={handleToggleTask}
+                      />
+                    </div>
+                    <button
+                      onClick={() => handleDeleteTask(task.id)}
+                      className="mt-3 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 text-slate-400 hover:bg-rose-100 hover:text-rose-600 transition"
+                      title="删除任务"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
                 ))
               )}
             </div>

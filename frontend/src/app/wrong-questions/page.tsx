@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import ReactMarkdown from "react-markdown";
 import {
   Plus,
   Filter,
@@ -11,11 +12,20 @@ import {
   BookOpen,
   Loader2,
   ChevronDown,
+  Camera,
+  Trash2,
+  Sparkles,
+  Send,
+  Upload,
 } from "lucide-react";
 import {
   createWrongQuestion,
   getWrongQuestions,
   updateWrongQuestion,
+  deleteWrongQuestion,
+  recognizeQuestion,
+  generateSimilarQuestions,
+  checkAnswer,
 } from "@/lib/api";
 import { SUBJECTS, getSubjectName } from "@/lib/subjects";
 import SubjectBadge from "@/components/SubjectBadge";
@@ -35,6 +45,26 @@ export default function WrongQuestionsPage() {
   const [filterSubject, setFilterSubject] = useState("");
   const [filterKP, setFilterKP] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  // Photo recognition state
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoBase64, setPhotoBase64] = useState<string | null>(null);
+  const [recognizing, setRecognizing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Similar questions state
+  const [expandedSimilar, setExpandedSimilar] = useState<string | null>(null);
+  const [similarLoading, setSimilarLoading] = useState<string | null>(null);
+  const [similarResults, setSimilarResults] = useState<Record<string, string>>(
+    {}
+  );
+  const [similarAnswers, setSimilarAnswers] = useState<
+    Record<string, Record<number, string>>
+  >({});
+  const [checkingAnswer, setCheckingAnswer] = useState<string | null>(null);
+  const [answerFeedback, setAnswerFeedback] = useState<
+    Record<string, Record<number, string>>
+  >({});
 
   const [form, setForm] = useState<WrongQuestionCreate>({
     subject: "chinese",
@@ -64,6 +94,51 @@ export default function WrongQuestionsPage() {
     }
   }
 
+  // Photo upload handler
+  function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setPhotoPreview(result);
+      const base64 = result.split(",")[1];
+      setPhotoBase64(base64);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearPhoto() {
+    setPhotoPreview(null);
+    setPhotoBase64(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function handleRecognize() {
+    if (!photoBase64) return;
+    setRecognizing(true);
+    setError(null);
+    try {
+      const recognized = await recognizeQuestion(
+        photoBase64,
+        form.subject || undefined
+      );
+      setForm((prev) => ({
+        ...prev,
+        subject: recognized.subject || prev.subject,
+        question_text: recognized.question_text || prev.question_text,
+        user_answer: recognized.user_answer || prev.user_answer,
+        correct_answer: recognized.correct_answer || prev.correct_answer,
+        error_reason: recognized.error_reason || prev.error_reason,
+        knowledge_point: recognized.knowledge_point || prev.knowledge_point,
+      }));
+    } catch (err: any) {
+      setError(err.message || "AI识别失败，请手动填写");
+    } finally {
+      setRecognizing(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.question_text.trim()) {
@@ -83,6 +158,7 @@ export default function WrongQuestionsPage() {
         error_reason: "",
         knowledge_point: "",
       });
+      clearPhoto();
       setShowForm(false);
     } catch (err: any) {
       setError(err.message || "添加失败");
@@ -91,8 +167,17 @@ export default function WrongQuestionsPage() {
     }
   }
 
+  async function handleDelete(id: string) {
+    if (!window.confirm("确定要删除这道错题吗？")) return;
+    try {
+      await deleteWrongQuestion(id);
+      setQuestions((prev) => prev.filter((q) => q.id !== id));
+    } catch {
+      // Ignore
+    }
+  }
+
   async function handleCycleMastery(q: WrongQuestion) {
-    // Cycle: not_mastered -> reviewing -> mastered -> not_mastered
     const cycle: Record<string, string> = {
       not_mastered: "reviewing",
       reviewing: "mastered",
@@ -108,6 +193,67 @@ export default function WrongQuestionsPage() {
       );
     } catch {
       // Ignore
+    }
+  }
+
+  // Similar questions (举一反三)
+  async function handleSimilarQuestions(q: WrongQuestion) {
+    if (expandedSimilar === q.id) {
+      setExpandedSimilar(null);
+      return;
+    }
+    setExpandedSimilar(q.id);
+
+    if (similarResults[q.id]) return; // Already loaded
+
+    setSimilarLoading(q.id);
+    try {
+      const res = await generateSimilarQuestions({
+        question_text: q.question_text,
+        subject: q.subject,
+        knowledge_point: q.knowledge_point,
+        error_reason: q.error_reason,
+      });
+      setSimilarResults((prev) => ({ ...prev, [q.id]: res.feedback }));
+    } catch {
+      setSimilarResults((prev) => ({
+        ...prev,
+        [q.id]: "生成失败，请重试。",
+      }));
+    } finally {
+      setSimilarLoading(null);
+    }
+  }
+
+  async function handleCheckAnswer(
+    q: WrongQuestion,
+    questionIndex: number,
+    questionText: string
+  ) {
+    const answer = similarAnswers[q.id]?.[questionIndex];
+    if (!answer?.trim()) return;
+
+    setCheckingAnswer(`${q.id}-${questionIndex}`);
+    try {
+      const res = await checkAnswer({
+        question: questionText,
+        subject: q.subject,
+        user_answer: answer,
+      });
+      setAnswerFeedback((prev) => ({
+        ...prev,
+        [q.id]: { ...(prev[q.id] || {}), [questionIndex]: res.feedback },
+      }));
+    } catch {
+      setAnswerFeedback((prev) => ({
+        ...prev,
+        [q.id]: {
+          ...(prev[q.id] || {}),
+          [questionIndex]: "检查失败，请重试。",
+        },
+      }));
+    } finally {
+      setCheckingAnswer(null);
     }
   }
 
@@ -144,6 +290,64 @@ export default function WrongQuestionsPage() {
             className="glass-card rounded-3xl p-5 lg:p-8 space-y-4 overflow-hidden"
           >
             <h2 className="text-lg font-semibold text-slate-800">添加错题</h2>
+
+            {/* Photo Upload Section */}
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-slate-700">
+                拍照识别（可选）
+              </label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handlePhotoUpload}
+                className="hidden"
+              />
+              {!photoPreview ? (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full py-10 border-2 border-dashed border-slate-300 rounded-2xl flex flex-col items-center gap-2 text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition"
+                >
+                  <Camera size={28} />
+                  <span className="text-sm font-medium">
+                    拍照或上传题目图片
+                  </span>
+                  <span className="text-xs">支持拍照、JPG、PNG 格式</span>
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <div className="relative">
+                    <img
+                      src={photoPreview}
+                      alt="题目预览"
+                      className="w-full max-h-64 object-contain rounded-2xl bg-slate-100"
+                    />
+                    <button
+                      type="button"
+                      onClick={clearPhoto}
+                      className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRecognize}
+                    disabled={recognizing}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 text-white rounded-xl font-medium hover:bg-violet-700 disabled:opacity-50 transition text-sm"
+                  >
+                    {recognizing ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Sparkles size={16} />
+                    )}
+                    {recognizing ? "AI识别中..." : "AI识别"}
+                  </button>
+                </div>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -338,8 +542,10 @@ export default function WrongQuestionsPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {questions.map((q, i) => {
-            const mastery = MASTERY_LABELS[q.mastery_status] || MASTERY_LABELS.not_mastered;
+            const mastery =
+              MASTERY_LABELS[q.mastery_status] || MASTERY_LABELS.not_mastered;
             const isMastered = q.mastery_status === "mastered";
+            const isExpanded = expandedSimilar === q.id;
             return (
               <motion.div
                 key={q.id}
@@ -376,6 +582,13 @@ export default function WrongQuestionsPage() {
                     >
                       <Check size={14} />
                     </button>
+                    <button
+                      onClick={() => handleDelete(q.id)}
+                      className="w-7 h-7 rounded-full flex items-center justify-center bg-slate-100 text-slate-400 hover:bg-rose-100 hover:text-rose-600 transition"
+                      title="删除"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 </div>
 
@@ -394,13 +607,17 @@ export default function WrongQuestionsPage() {
                     <p className="text-emerald-400 font-medium mb-0.5">
                       正确答案
                     </p>
-                    <p className="text-emerald-700">{q.correct_answer || "-"}</p>
+                    <p className="text-emerald-700">
+                      {q.correct_answer || "-"}
+                    </p>
                   </div>
                 </div>
 
                 {q.error_reason && (
                   <div className="bg-amber-50 rounded-lg p-2 text-xs">
-                    <p className="text-amber-500 font-medium mb-0.5">错误原因</p>
+                    <p className="text-amber-500 font-medium mb-0.5">
+                      错误原因
+                    </p>
                     <p className="text-amber-800">{q.error_reason}</p>
                   </div>
                 )}
@@ -414,6 +631,112 @@ export default function WrongQuestionsPage() {
                     {mastery.text}
                   </span>
                 </div>
+
+                {/* 举一反三 Button */}
+                <button
+                  onClick={() => handleSimilarQuestions(q)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-violet-50 text-violet-700 rounded-xl font-medium hover:bg-violet-100 transition text-sm"
+                >
+                  <Sparkles size={16} />
+                  {isExpanded ? "收起" : "举一反三"}
+                </button>
+
+                {/* Similar Questions Expanded Section */}
+                <AnimatePresence>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="bg-violet-50 rounded-2xl p-4 space-y-4">
+                        {similarLoading === q.id ? (
+                          <div className="flex items-center justify-center py-8 gap-2 text-violet-600">
+                            <Loader2 size={20} className="animate-spin" />
+                            <span className="text-sm">正在生成类似题目...</span>
+                          </div>
+                        ) : similarResults[q.id] ? (
+                          <>
+                            <div className="markdown-body text-sm">
+                              <ReactMarkdown>
+                                {similarResults[q.id]}
+                              </ReactMarkdown>
+                            </div>
+
+                            {/* Answer input area */}
+                            <div className="space-y-3 border-t border-violet-200 pt-4">
+                              <p className="text-sm font-medium text-violet-700">
+                                写下你的答案
+                              </p>
+                              <textarea
+                                value={similarAnswers[q.id]?.[0] || ""}
+                                onChange={(e) =>
+                                  setSimilarAnswers((prev) => ({
+                                    ...prev,
+                                    [q.id]: {
+                                      ...(prev[q.id] || {}),
+                                      0: e.target.value,
+                                    },
+                                  }))
+                                }
+                                placeholder="输入你的答案..."
+                                rows={3}
+                                className="w-full px-4 py-3 rounded-xl border border-violet-200 focus:border-violet-400 focus:ring-2 focus:ring-violet-100 outline-none text-sm resize-none bg-white"
+                              />
+                              <div className="flex justify-end">
+                                <button
+                                  onClick={() =>
+                                    handleCheckAnswer(
+                                      q,
+                                      0,
+                                      similarResults[q.id]
+                                    )
+                                  }
+                                  disabled={
+                                    checkingAnswer === `${q.id}-0` ||
+                                    !similarAnswers[q.id]?.[0]?.trim()
+                                  }
+                                  className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 text-white rounded-xl font-medium hover:bg-violet-700 disabled:opacity-50 transition text-sm"
+                                >
+                                  {checkingAnswer === `${q.id}-0` ? (
+                                    <Loader2
+                                      size={16}
+                                      className="animate-spin"
+                                    />
+                                  ) : (
+                                    <Send size={16} />
+                                  )}
+                                  {checkingAnswer === `${q.id}-0`
+                                    ? "检查中..."
+                                    : "提交检查"}
+                                </button>
+                              </div>
+
+                              {/* Answer feedback */}
+                              {answerFeedback[q.id]?.[0] && (
+                                <motion.div
+                                  initial={{ opacity: 0, y: 10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  className="bg-white rounded-xl p-4 border border-violet-200"
+                                >
+                                  <p className="text-sm font-medium text-violet-700 mb-2">
+                                    AI反馈
+                                  </p>
+                                  <div className="markdown-body text-sm">
+                                    <ReactMarkdown>
+                                      {answerFeedback[q.id][0]}
+                                    </ReactMarkdown>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </div>
+                          </>
+                        ) : null}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             );
           })}
