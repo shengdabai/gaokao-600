@@ -1,29 +1,55 @@
-# 高考冲刺 600 分 · 百日逆袭计划
+# Gaokao Sprint 600
 
-面向高三住校生的个人学习助手 Web 应用，支持成绩诊断、智能排课、错题间隔复习和 AI 批改。
+A web-based study companion for high school students aiming for 600+ on the Gaokao (Chinese college entrance exam). Features AI-powered essay grading, spaced repetition, and smart study planning.
 
-## 技术栈
+高考冲刺 600 分 -- 面向高三住校生的 AI 学习助手，支持成绩诊断、智能排课、错题间隔复习和 AI 批改。
 
-| 层 | 技术 |
-|---|---|
-| 前端 | Next.js 15 · TypeScript · Tailwind CSS v4 |
-| 后端 | FastAPI · Python 3.11+ |
-| 数据库 | SQLite |
+## Features / 功能特性
+
+- **Score Diagnosis** -- Input subject scores, auto-calculate gaps and prioritize subjects by weight
+- **100-Day Plan** -- Three-phase plan (foundation repair, consolidation, sprint simulation) with auto-generated weekly/daily tasks
+- **Mistake Book** -- Spaced repetition review (1/2/4/7/15 days) with subject/topic filtering
+- **AI Grading** -- Chinese essay structure analysis, politics essay scoring
+- **Photo Explanation** -- Upload problem images, AI explains solution approach
+- **Note Search** -- Quick access to core notes by topic
+- **Weekly Summary** -- Auto-completion rate statistics with next-week suggestions
+
+## Tech Stack / 技术栈
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 15, TypeScript, Tailwind CSS v4 |
+| Backend | FastAPI, Python 3.11+ |
+| Database | SQLite |
 | AI | Google Gemini (gemini-2.5-flash) |
 
-## 功能
+## Project Structure / 项目结构
 
-- **成绩诊断** — 录入各科分数，自动计算差距并按权重排序优先科目
-- **百日计划** — 三阶段（基础修复→中等稳固→冲刺模拟）自动生成周/日任务
-- **错题本** — 间隔重复复习（1/2/4/7/15 天），按科目/知识点筛选
-- **AI 批改** — 语文作文结构分析、政治主观题评分
-- **拍题讲解** — 上传题目图片，AI 解析解题思路
-- **笔记搜索** — 按知识点快速获取核心笔记
-- **周总结** — 自动统计完成率，生成下周建议
+```
+gaokao-600/
+├── backend/
+│   ├── app/
+│   │   ├── main.py          # FastAPI entry
+│   │   ├── database.py      # SQLite config
+│   │   ├── models/          # SQLAlchemy models
+│   │   ├── schemas/         # Pydantic schemas
+│   │   ├── routes/          # API routes
+│   │   └── services/        # Business logic
+│   ├── uploads/             # File uploads
+│   └── requirements.txt
+├── frontend/
+│   ├── src/
+│   │   ├── app/             # Next.js pages
+│   │   ├── components/      # Shared components
+│   │   ├── lib/             # API client
+│   │   └── types/           # TypeScript types
+│   └── package.json
+└── .env.example
+```
 
-## 本地运行
+## Getting Started / 快速开始
 
-### 后端
+### Backend
 
 ```bash
 cd backend
@@ -31,42 +57,36 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
-# 配置环境变量
+# Configure environment
 cp ../.env.example .env
-# 编辑 .env 填入你的 GEMINI_API_KEY
-# 获取地址: https://aistudio.google.com/apikey
+# Edit .env with your GEMINI_API_KEY
+# Get key: https://aistudio.google.com/apikey
 
-# 启动
 uvicorn app.main:app --reload --port 8000
 ```
 
-### 前端
+### Frontend
 
 ```bash
 cd frontend
 npm install
 npm run dev
-# 访问 http://localhost:3000
+# Open http://localhost:3000
 ```
 
-## 环境变量
+## Environment Variables / 环境变量
 
-| 变量 | 说明 |
-|---|---|
-| `GEMINI_API_KEY` | Google Gemini API 密钥（[获取地址](https://aistudio.google.com/apikey)） |
+| Variable | Description |
+|----------|-------------|
+| `GEMINI_API_KEY` | Google Gemini API key ([Get here](https://aistudio.google.com/apikey)) |
 
-只需配置这一个环境变量即可启用全部 AI 功能（语文批改、政治批改、拍题讲解、笔记搜索、周总结）。
+Only this one environment variable is needed to enable all AI features.
 
-## 部署
+## Deployment / 部署
 
-### 前端 → Vercel
+**Frontend -- Vercel**: Import repo, set root directory to `frontend`, add `NEXT_PUBLIC_API_URL`.
 
-1. 推送到 GitHub
-2. 在 Vercel 导入仓库，设置根目录为 `frontend`
-3. 添加环境变量 `NEXT_PUBLIC_API_URL` 指向后端地址
-
-### 后端 → Railway / Render / Docker
-
+**Backend -- Railway/Render/Docker**:
 ```dockerfile
 FROM python:3.11-slim
 WORKDIR /app
@@ -75,33 +95,10 @@ RUN pip install -r requirements.txt
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-部署后需在后端 CORS 中添加前端域名。
+## Mobile / 手机访问
 
-## 手机访问
+Responsive design optimized for mobile browsers. Access the frontend URL directly after deployment.
 
-部署完成后，在手机浏览器直接访问前端 URL 即可。响应式设计已针对手机屏幕优化。
+## License
 
-## 项目结构
-
-```
-gaokao-600/
-├── backend/
-│   ├── app/
-│   │   ├── main.py          # FastAPI 入口
-│   │   ├── database.py      # SQLite 配置
-│   │   ├── models/          # SQLAlchemy 模型
-│   │   ├── schemas/         # Pydantic 模型
-│   │   ├── routes/          # API 路由
-│   │   └── services/        # 业务逻辑
-│   ├── uploads/             # 文件上传目录
-│   └── requirements.txt
-├── frontend/
-│   ├── src/
-│   │   ├── app/             # Next.js 页面
-│   │   ├── components/      # 共享组件
-│   │   ├── lib/             # API 客户端
-│   │   └── types/           # TypeScript 类型
-│   └── package.json
-├── .env.example
-└── README.md
-```
+Private repository. All rights reserved.
