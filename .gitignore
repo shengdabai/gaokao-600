@@ -38,3 +38,6 @@ backend/uploads/*
 # Logs
 *.log
 .gstack/
+
+# OMC internal state
+.omc/
