@@ -10,6 +10,15 @@ env/
 .env
 .env.local
 .env.*.local
+.env.*
+!.env.example
+
+# Secrets / credentials
+*.pem
+*.key
+id_rsa*
+credentials.*
+secrets.*
 
 # Database
 *.db
@@ -20,6 +29,8 @@ env/
 out/
 dist/
 build/
+*.tsbuildinfo
+tsconfig.tsbuildinfo
 
 # IDE
 .vscode/
@@ -41,18 +52,16 @@ backend/uploads/*
 
 # OMC internal state
 .omc/
-# Codex governance: local secrets and machine state
-.env
-.env.*
-!.env.example
-!.env.*.example
-*.pem
-*.p12
-*.pfx
-id_rsa
-id_dsa
-.npmrc
-.DS_Store
-.omc/
 .codex/
 .claude/local/
+
+# Codex governance: local secrets and machine state
+*.p12
+*.pfx
+id_dsa
+.npmrc
+
+# Agent / pipeline state files
+*-todo.md
+state*.json
+.pipeline-state.json

@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.config import DEFAULT_USER_ID
 from app.database import get_db
 from app.models.models import Review
 from app.schemas.schemas import (
@@ -19,7 +20,7 @@ from app.services.ai_service import AIService
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
-USER_ID = 1
+USER_ID = DEFAULT_USER_ID
 
 
 @router.post("/chinese-review", response_model=AIReviewResponse)
@@ -66,6 +67,10 @@ async def search_notes(payload: SearchNotesRequest):
 @router.post("/recognize-question", response_model=RecognizeQuestionResponse)
 async def recognize_question(payload: RecognizeQuestionRequest):
     result = await AIService.recognize_question(payload.base64_image, payload.subject)
+    if "error" in result:
+        # Model returned unparseable output; respond with a clear 422
+        # instead of a 500 from response-model validation.
+        raise HTTPException(status_code=422, detail=result["error"])
     return RecognizeQuestionResponse(**result)
 
 

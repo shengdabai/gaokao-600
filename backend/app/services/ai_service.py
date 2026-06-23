@@ -8,10 +8,26 @@ import os
 from google import genai
 from google.genai import types
 
+# Map of subject keys -> Chinese display names, shared by all prompt builders.
+SUBJECT_CN = {
+    "chinese": "语文",
+    "math": "数学",
+    "english": "英语",
+    "physics": "物理",
+    "chemistry": "化学",
+    "politics": "政治",
+}
+
+# Module-level Gemini client singleton (lazily created, reused across calls).
+_client: genai.Client | None = None
+
 
 def _get_client() -> genai.Client:
-    api_key = os.environ.get("GEMINI_API_KEY", "")
-    return genai.Client(api_key=api_key)
+    global _client
+    if _client is None:
+        api_key = os.environ.get("GEMINI_API_KEY", "")
+        _client = genai.Client(api_key=api_key)
+    return _client
 
 
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
@@ -83,14 +99,7 @@ class AIService:
 
     @staticmethod
     async def analyze_image(base64_image: str, subject: str = "general") -> str:
-        subject_cn = {
-            "chinese": "语文",
-            "math": "数学",
-            "english": "英语",
-            "physics": "物理",
-            "chemistry": "化学",
-            "politics": "政治",
-        }.get(subject, "综合")
+        subject_cn = SUBJECT_CN.get(subject, "综合")
 
         system_prompt = (
             f"你是一位{subject_cn}学科的高中老师。"
@@ -121,14 +130,7 @@ class AIService:
 
     @staticmethod
     async def search_notes(query: str, subject: str = "general") -> str:
-        subject_cn = {
-            "chinese": "语文",
-            "math": "数学",
-            "english": "英语",
-            "physics": "物理",
-            "chemistry": "化学",
-            "politics": "政治",
-        }.get(subject, "综合")
+        subject_cn = SUBJECT_CN.get(subject, "综合")
 
         system_prompt = (
             f"你是一位{subject_cn}学科的高中老师和学习笔记专家。"
@@ -143,14 +145,7 @@ class AIService:
     async def recognize_question(base64_image: str, subject: str | None = None) -> dict:
         subject_hint = ""
         if subject:
-            subject_cn = {
-                "chinese": "语文",
-                "math": "数学",
-                "english": "英语",
-                "physics": "物理",
-                "chemistry": "化学",
-                "politics": "政治",
-            }.get(subject, subject)
+            subject_cn = SUBJECT_CN.get(subject, subject)
             subject_hint = f"该题目的学科是：{subject_cn}。"
 
         system_prompt = (
@@ -198,20 +193,21 @@ class AIService:
             text = text[: -3]
         text = text.strip()
 
-        return json.loads(text)
+        try:
+            return json.loads(text)
+        except (json.JSONDecodeError, ValueError):
+            # Model returned non-JSON output; surface a structured error
+            # instead of crashing with a 500.
+            return {
+                "error": "无法解析题目识别结果，请重试或换一张更清晰的图片。",
+                "raw": raw,
+            }
 
     @staticmethod
     async def generate_similar(
         question_text: str, subject: str, knowledge_point: str, error_reason: str
     ) -> str:
-        subject_cn = {
-            "chinese": "语文",
-            "math": "数学",
-            "english": "英语",
-            "physics": "物理",
-            "chemistry": "化学",
-            "politics": "政治",
-        }.get(subject, subject)
+        subject_cn = SUBJECT_CN.get(subject, subject)
 
         system_prompt = (
             f"你是一位经验丰富的高中{subject_cn}老师。"
@@ -234,14 +230,7 @@ class AIService:
 
     @staticmethod
     async def check_answer(question: str, subject: str, user_answer: str) -> str:
-        subject_cn = {
-            "chinese": "语文",
-            "math": "数学",
-            "english": "英语",
-            "physics": "物理",
-            "chemistry": "化学",
-            "politics": "政治",
-        }.get(subject, subject)
+        subject_cn = SUBJECT_CN.get(subject, subject)
 
         system_prompt = (
             f"你是一位经验丰富的高中{subject_cn}老师。"

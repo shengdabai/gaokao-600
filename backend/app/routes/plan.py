@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.config import DEFAULT_USER_ID
 from app.database import get_db
 from app.schemas.schemas import PlanGenerateRequest, PlanOut
 from app.services.plan_generation import PlanGenerationService
 
 router = APIRouter(prefix="/api/plan", tags=["plan"])
 
-USER_ID = 1
+USER_ID = DEFAULT_USER_ID
 
 
 @router.post("/generate", response_model=PlanOut)

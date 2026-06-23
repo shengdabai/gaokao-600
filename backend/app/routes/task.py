@@ -4,13 +4,14 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.config import DEFAULT_USER_ID
 from app.database import get_db
 from app.models.models import Task
 from app.schemas.schemas import TaskOut
 
 router = APIRouter(prefix="/api/tasks", tags=["task"])
 
-USER_ID = 1
+USER_ID = DEFAULT_USER_ID
 
 
 @router.get("/daily", response_model=List[TaskOut])

@@ -6,4 +6,8 @@ pydantic-settings==2.7.0
 google-genai>=1.0.0
 python-multipart==0.0.20
 python-dotenv==1.0.1
-psycopg2-binary==2.9.10
+
+# PostgreSQL driver — only needed when DATABASE_URL points at Postgres/Supabase.
+# Local development defaults to SQLite and does NOT require this. Install it
+# explicitly for Postgres deployments:  pip install psycopg2-binary==2.9.10
+# psycopg2-binary==2.9.10

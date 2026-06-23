@@ -3,6 +3,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.config import DEFAULT_USER_ID
 from app.database import get_db
 from app.models.models import MasteryStatus, WrongQuestion
 from app.schemas.schemas import WrongQuestionCreate, WrongQuestionOut, WrongQuestionUpdate
@@ -10,7 +11,7 @@ from app.services.wrong_question_scheduler import WrongQuestionScheduler
 
 router = APIRouter(prefix="/api/wrong-questions", tags=["wrong_question"])
 
-USER_ID = 1
+USER_ID = DEFAULT_USER_ID
 
 
 @router.post("", response_model=WrongQuestionOut)

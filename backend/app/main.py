@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
@@ -33,9 +34,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# CORS: restrict to allowed origins via env var (comma-separated).
+# Defaults to localhost dev origin; set ALLOWED_ORIGINS in production.
+_allowed_origins = [
+    origin.strip()
+    for origin in os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

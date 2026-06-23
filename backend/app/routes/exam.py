@@ -3,6 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.config import DEFAULT_USER_ID
 from app.database import get_db
 from app.models.models import Exam, User
 from app.schemas.schemas import ExamCreate, ExamOut
@@ -10,7 +11,7 @@ from app.services.score_analysis import ScoreAnalysisService
 
 router = APIRouter(prefix="/api", tags=["exam"])
 
-USER_ID = 1
+USER_ID = DEFAULT_USER_ID
 
 
 def _ensure_user(db: Session) -> None:

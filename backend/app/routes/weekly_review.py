@@ -3,6 +3,7 @@ import os
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.config import DEFAULT_USER_ID
 from app.database import get_db
 from app.schemas.schemas import WeeklyReviewOut
 from app.services.ai_service import AIService
@@ -10,7 +11,7 @@ from app.services.weekly_review import WeeklyReviewService
 
 router = APIRouter(prefix="/api", tags=["weekly_review"])
 
-USER_ID = 1
+USER_ID = DEFAULT_USER_ID
 
 
 @router.get("/weekly-review", response_model=WeeklyReviewOut)
