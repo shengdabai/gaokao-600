@@ -16,6 +16,7 @@ import Link from "next/link";
 import ScoreCard from "@/components/ScoreCard";
 import { getUserProfile, getDiagnosis, getDailyTasks, getWrongQuestions } from "@/lib/api";
 import { SUBJECTS, TOTAL_TARGET } from "@/lib/subjects";
+import { localDateKey } from "@/lib/date";
 import type { Diagnosis, DailyTask } from "@/types";
 
 interface DashboardState {
@@ -41,7 +42,7 @@ export default function DashboardPage() {
 
   async function loadDashboard() {
     try {
-      const today = new Date().toISOString().split("T")[0];
+      const today = localDateKey();
 
       // Call individual endpoints in parallel
       const [diagResult, tasksResult, wrongQResult] = await Promise.allSettled([

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Send, Calendar, FileText, TrendingDown, Loader2, Trash2 } from "lucide-react";
 import { createExam, getExams, getDiagnosis, deleteExam } from "@/lib/api";
 import { SUBJECTS } from "@/lib/subjects";
+import { localDateKey } from "@/lib/date";
 import SubjectBadge from "@/components/SubjectBadge";
 import type { Exam, ExamCreate, Diagnosis } from "@/types";
 
@@ -27,9 +28,9 @@ export default function ExamPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [examName, setExamName] = useState("");
-  const [examDate, setExamDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
+  // 默认考试日期在挂载后按浏览器本地日期填入。这个页面会在构建时预渲染，
+  // 直接写进 useState 初值会把构建那天的日期写进 HTML，和浏览器首帧对不上。
+  const [examDate, setExamDate] = useState("");
   const [scores, setScores] = useState<Record<string, number>>({
     chinese: 0,
     math: 0,
@@ -40,6 +41,7 @@ export default function ExamPage() {
   });
 
   useEffect(() => {
+    setExamDate((d) => d || localDateKey());
     loadExams();
   }, []);
 
