@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { getWeeklyPlan, generatePlan, getDailyTasks, completeTask, deleteTask } from "@/lib/api";
 import { getSubjectName, SUBJECTS } from "@/lib/subjects";
+import { localDateKey } from "@/lib/date";
 import TaskCard from "@/components/TaskCard";
 import SubjectBadge from "@/components/SubjectBadge";
 import type { Plan, DailyTask } from "@/types";
@@ -43,7 +44,7 @@ export default function PlanPage() {
     try {
       const [weeklyPlan, tasks] = await Promise.allSettled([
         getWeeklyPlan(),
-        getDailyTasks(new Date().toISOString().split("T")[0]),
+        getDailyTasks(localDateKey()),
       ]);
 
       if (weeklyPlan.status === "fulfilled") {
@@ -91,9 +92,7 @@ export default function PlanPage() {
       }
       // Reload today's tasks
       try {
-        const tasks = await getDailyTasks(
-          new Date().toISOString().split("T")[0]
-        );
+        const tasks = await getDailyTasks(localDateKey());
         setTodayTasks(tasks);
       } catch {
         // Tasks may not be available yet
